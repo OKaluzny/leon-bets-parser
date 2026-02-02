@@ -43,7 +43,9 @@ class LeonApiServiceTest {
                 new LeonApiProperties.Api(
                         "https://leon.bet",
                         Duration.ofSeconds(30),
-                        new LeonApiProperties.Api.Retry(1, Duration.ofMillis(100))
+                        new LeonApiProperties.Api.Retry(1, Duration.ofMillis(100)),
+                        new LeonApiProperties.Api.Http("Mozilla/5.0 Test", 16),
+                        new LeonApiProperties.Api.CircuitBreaker(false, 50, 10, Duration.ofSeconds(30), 3)
                 ),
                 new LeonApiProperties.Parser(3, 2, List.of("Soccer"))
         );
