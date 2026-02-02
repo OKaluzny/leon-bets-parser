@@ -1,0 +1,26 @@
+leon:
+  api:
+    base-url: https://leon.bet
+    timeout: 30s
+    retry:
+      max-attempts: 3
+      delay: 1s
+  parser:
+    max-parallel-requests: 3
+    matches-per-league: 2
+    target-sports:
+      - Soccer
+      - Tennis
+      - IceHockey
+      - Basketball
+
+spring:
+  application:
+    name: leon-bets-parser
+  main:
+    web-application-type: none
+
+logging:
+  level:
+    com.example.demo: INFO
+    reactor.netty: WARN
