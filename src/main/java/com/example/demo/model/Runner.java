@@ -8,4 +8,4 @@ public record Runner(
         String name,
         double price,
         boolean open
-) {}
+) { }

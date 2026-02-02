@@ -10,4 +10,4 @@ public record Market(
         String name,
         boolean open,
         List<Runner> runners
-) {}
+) { }

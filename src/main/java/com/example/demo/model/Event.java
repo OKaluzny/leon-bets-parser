@@ -10,4 +10,4 @@ public record Event(
         String name,
         long kickoff,
         List<Market> markets
-) {}
+) { }

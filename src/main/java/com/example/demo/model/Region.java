@@ -9,4 +9,4 @@ public record Region(
         long id,
         String name,
         List<League> leagues
-) {}
+) { }

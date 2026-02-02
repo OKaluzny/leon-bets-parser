@@ -1,14 +1,21 @@
 package com.example.demo.service;
 
 import com.example.demo.config.LeonApiProperties;
-import com.example.demo.model.*;
+import com.example.demo.model.Event;
+import com.example.demo.model.League;
+import com.example.demo.model.Market;
+import com.example.demo.model.Region;
+import com.example.demo.model.Runner;
+import com.example.demo.model.Sport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.io.PrintStream;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -19,49 +26,58 @@ import java.util.List;
 import java.util.Set;
 
 @Service
+@SuppressWarnings("PMD.SystemPrintln")
 public class LeonBetsParser {
 
-    private static final Logger log = LoggerFactory.getLogger(LeonBetsParser.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LeonBetsParser.class);
 
     private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'").withZone(ZoneOffset.UTC);
 
     private static final Duration RATE_LIMIT_DELAY = Duration.ofMillis(100);
+    private static final int STRING_BUILDER_INITIAL_CAPACITY = 512;
 
     private final LeonApiService apiService;
     private final int maxParallelRequests;
     private final int matchesPerLeague;
     private final Set<String> targetSports;
+    private final PrintStream outputStream;
 
+    @Autowired
     public LeonBetsParser(LeonApiService apiService, LeonApiProperties properties) {
+        this(apiService, properties, System.out);
+    }
+
+    LeonBetsParser(LeonApiService apiService, LeonApiProperties properties, PrintStream outputStream) {
         this.apiService = apiService;
         this.maxParallelRequests = properties.parser().maxParallelRequests();
         this.matchesPerLeague = properties.parser().matchesPerLeague();
         this.targetSports = Set.copyOf(properties.parser().targetSports());
+        this.outputStream = outputStream;
     }
 
     public Mono<Void> parse() {
-        log.info("Starting parser for sports: {}", targetSports);
+        LOG.info("Starting parser for sports: {}", targetSports);
 
         return apiService.getSports()
-                .doOnNext(sports -> log.info("Fetched {} sports from API", sports.size()))
+                .doOnNext(sports -> LOG.info("Fetched {} sports from API", sports.size()))
                 .flatMapMany(Flux::fromIterable)
                 .filter(sport -> targetSports.contains(sport.family()))
-                .doOnNext(sport -> log.debug("Processing sport: {}", sport.name()))
+                .doOnNext(sport -> LOG.debug("Processing sport: {}", sport.name()))
                 .flatMap(this::processTopLeagues, maxParallelRequests)
                 .then()
-                .doOnSuccess(v -> log.info("Parsing completed successfully"))
-                .doOnError(e -> log.error("Parsing failed", e));
+                .doOnSuccess(v -> LOG.info("Parsing completed successfully"))
+                .doOnError(e -> LOG.error("Parsing failed", e));
     }
 
     private Flux<Void> processTopLeagues(Sport sport) {
         if (sport.regions() == null) {
-            log.debug("No regions found for sport: {}", sport.name());
+            LOG.debug("No regions found for sport: {}", sport.name());
             return Flux.empty();
         }
 
         List<LeagueContext> topLeagues = collectTopLeagues(sport);
-        log.info("Found {} top leagues for {}", topLeagues.size(), sport.name());
+        LOG.info("Found {} top leagues for {}", topLeagues.size(), sport.name());
 
         return Flux.fromIterable(topLeagues)
                 .delayElements(RATE_LIMIT_DELAY)
@@ -72,7 +88,9 @@ public class LeonBetsParser {
         List<LeagueContext> topLeagues = new ArrayList<>();
 
         for (Region region : sport.regions()) {
-            if (region.leagues() == null) continue;
+            if (region.leagues() == null) {
+                continue;
+            }
 
             for (League league : region.leagues()) {
                 if (league.top() && league.prematch() > 0) {
@@ -86,15 +104,15 @@ public class LeonBetsParser {
     }
 
     private Mono<Void> processLeague(LeagueContext ctx) {
-        log.debug("Processing league: {} - {}", ctx.region().name(), ctx.league().name());
+        LOG.debug("Processing league: {} - {}", ctx.region().name(), ctx.league().name());
 
         return apiService.getEventsByLeague(ctx.league().id())
                 .flatMapMany(response -> {
                     if (response.events() == null || response.events().isEmpty()) {
-                        log.debug("No events found for league: {}", ctx.league().name());
+                        LOG.debug("No events found for league: {}", ctx.league().name());
                         return Flux.empty();
                     }
-                    log.debug("Found {} events in league {}", response.events().size(), ctx.league().name());
+                    LOG.debug("Found {} events in league {}", response.events().size(), ctx.league().name());
                     return Flux.fromIterable(response.events()).take(matchesPerLeague);
                 })
                 .delayElements(RATE_LIMIT_DELAY)
@@ -110,33 +128,61 @@ public class LeonBetsParser {
     }
 
     private void printEvent(Event event, LeagueContext ctx) {
+        StringBuilder sb = new StringBuilder(STRING_BUILDER_INITIAL_CAPACITY);
+
+        appendEventHeader(sb, event, ctx);
+        appendMarkets(sb, event);
+
+        outputStream.print(sb);
+        outputStream.flush();
+    }
+
+    private void appendEventHeader(StringBuilder sb, Event event, LeagueContext ctx) {
         String leagueName = ctx.region().name() + " " + ctx.league().name();
         String kickoffStr = DATE_FORMATTER.format(Instant.ofEpochMilli(event.kickoff()));
 
-        StringBuilder sb = new StringBuilder();
-        sb.append("\n");
-        sb.append(ctx.sport().name()).append(", ").append(leagueName).append("\n");
-        sb.append("    ").append(event.name()).append(", ").append(kickoffStr)
-                .append(", ").append(event.id()).append("\n");
-
-        if (event.markets() != null) {
-            for (Market market : event.markets()) {
-                if (!market.open()) continue;
-                sb.append("        ").append(market.name()).append("\n");
-                if (market.runners() != null) {
-                    for (Runner runner : market.runners()) {
-                        if (!runner.open()) continue;
-                        sb.append("            ").append(runner.name())
-                                .append(", ").append(runner.price())
-                                .append(", ").append(runner.id()).append("\n");
-                    }
-                }
-            }
-        }
-
-        System.out.print(sb);
-        System.out.flush();
+        sb.append('\n')
+          .append(ctx.sport().name())
+          .append(", ")
+          .append(leagueName)
+          .append("\n    ")
+          .append(event.name())
+          .append(", ")
+          .append(kickoffStr)
+          .append(", ")
+          .append(event.id())
+          .append('\n');
     }
 
-    private record LeagueContext(Sport sport, Region region, League league) {}
+    private void appendMarkets(StringBuilder sb, Event event) {
+        if (event.markets() == null) {
+            return;
+        }
+
+        for (Market market : event.markets()) {
+            if (!market.open()) {
+                continue;
+            }
+            sb.append("        ").append(market.name()).append('\n');
+            appendRunners(sb, market);
+        }
+    }
+
+    private void appendRunners(StringBuilder sb, Market market) {
+        if (market.runners() == null) {
+            return;
+        }
+
+        for (Runner runner : market.runners()) {
+            if (!runner.open()) {
+                continue;
+            }
+            sb.append("            ")
+              .append(runner.name()).append(", ")
+              .append(runner.price()).append(", ")
+              .append(runner.id()).append('\n');
+        }
+    }
+
+    private record LeagueContext(Sport sport, Region region, League league) { }
 }

@@ -10,4 +10,4 @@ public record Sport(
         String name,
         String family,
         List<Region> regions
-) {}
+) { }

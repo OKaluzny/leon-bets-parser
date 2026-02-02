@@ -9,4 +9,4 @@ public record League(
         boolean top,
         int topOrder,
         int prematch
-) {}
+) { }

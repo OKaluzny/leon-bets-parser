@@ -20,10 +20,12 @@ import java.util.List;
 @Service
 public class LeonApiService {
 
-    private static final Logger log = LoggerFactory.getLogger(LeonApiService.class);
+    private static final Logger LOG = LoggerFactory.getLogger(LeonApiService.class);
 
     private static final String CTAG = "en-US";
     private static final String FLAGS = "reg,urlv2,mm2,rrc,nodup";
+    private static final int SERVER_ERROR_THRESHOLD = 500;
+    private static final int TOO_MANY_REQUESTS = 429;
 
     private final WebClient webClient;
     private final Retry retrySpec;
@@ -46,9 +48,9 @@ public class LeonApiService {
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, response ->
                         Mono.error(new ApiException("Failed to fetch sports: " + response.statusCode())))
-                .bodyToMono(new ParameterizedTypeReference<List<Sport>>() {})
+                .bodyToMono(new ParameterizedTypeReference<List<Sport>>() { })
                 .retryWhen(retrySpec)
-                .doOnError(e -> log.error("Error fetching sports", e))
+                .doOnError(e -> LOG.error("Error fetching sports", e))
                 .onErrorReturn(Collections.emptyList());
     }
 
@@ -66,7 +68,7 @@ public class LeonApiService {
                         Mono.error(new ApiException("Failed to fetch events for league " + leagueId)))
                 .bodyToMono(EventsResponse.class)
                 .retryWhen(retrySpec)
-                .doOnError(e -> log.warn("Error fetching events for league {}: {}", leagueId, e.getMessage()))
+                .doOnError(e -> LOG.warn("Error fetching events for league {}: {}", leagueId, e.getMessage()))
                 .onErrorReturn(new EventsResponse());
     }
 
@@ -83,14 +85,14 @@ public class LeonApiService {
                         Mono.error(new ApiException("Failed to fetch event " + eventId)))
                 .bodyToMono(Event.class)
                 .retryWhen(retrySpec)
-                .doOnError(e -> log.warn("Error fetching event {}: {}", eventId, e.getMessage()))
+                .doOnError(e -> LOG.warn("Error fetching event {}: {}", eventId, e.getMessage()))
                 .onErrorResume(e -> Mono.empty());
     }
 
     private boolean isRetryableException(Throwable throwable) {
         if (throwable instanceof WebClientResponseException wcre) {
             int status = wcre.getStatusCode().value();
-            return status >= 500 || status == 429;
+            return status >= SERVER_ERROR_THRESHOLD || status == TOO_MANY_REQUESTS;
         }
         return throwable instanceof ApiException;
     }

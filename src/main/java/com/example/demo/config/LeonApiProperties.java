@@ -18,12 +18,12 @@ public record LeonApiProperties(
         public record Retry(
                 int maxAttempts,
                 Duration delay
-        ) {}
+        ) { }
     }
 
     public record Parser(
             int maxParallelRequests,
             int matchesPerLeague,
             List<String> targetSports
-    ) {}
+    ) { }
 }

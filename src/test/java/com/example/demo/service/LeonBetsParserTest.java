@@ -1,7 +1,13 @@
 package com.example.demo.service;
 
 import com.example.demo.config.LeonApiProperties;
-import com.example.demo.model.*;
+import com.example.demo.model.Event;
+import com.example.demo.model.EventsResponse;
+import com.example.demo.model.League;
+import com.example.demo.model.Market;
+import com.example.demo.model.Region;
+import com.example.demo.model.Runner;
+import com.example.demo.model.Sport;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -25,11 +31,12 @@ class LeonBetsParserTest {
     @Mock
     private LeonApiService apiService;
 
+    private LeonApiProperties properties;
     private LeonBetsParser parser;
 
     @BeforeEach
     void setUp() {
-        LeonApiProperties properties = new LeonApiProperties(
+        properties = new LeonApiProperties(
                 new LeonApiProperties.Api(
                         "https://leon.bet",
                         Duration.ofSeconds(30),
@@ -133,23 +140,19 @@ class LeonBetsParserTest {
         when(apiService.getEventDetails(1000L)).thenReturn(Mono.just(event));
 
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
-        PrintStream originalOut = System.out;
-        System.setOut(new PrintStream(outputStream));
+        LeonBetsParser parserWithCustomOutput = new LeonBetsParser(
+                apiService, properties, new PrintStream(outputStream));
 
-        try {
-            // When
-            parser.parse().block();
+        // When
+        parserWithCustomOutput.parse().block();
 
-            // Then
-            String output = outputStream.toString();
-            assertThat(output).contains("Football");
-            assertThat(output).contains("England Premier League");
-            assertThat(output).contains("Team A vs Team B");
-            assertThat(output).contains("Winner");
-            assertThat(output).contains("1.95");
-        } finally {
-            System.setOut(originalOut);
-        }
+        // Then
+        String output = outputStream.toString();
+        assertThat(output).contains("Football");
+        assertThat(output).contains("England Premier League");
+        assertThat(output).contains("Team A vs Team B");
+        assertThat(output).contains("Winner");
+        assertThat(output).contains("1.95");
     }
 
     @Test
