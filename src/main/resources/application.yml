@@ -5,6 +5,15 @@ leon:
     retry:
       max-attempts: 3
       delay: 1s
+    http:
+      user-agent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"
+      max-in-memory-size-mb: 16
+    circuit-breaker:
+      enabled: true
+      failure-rate-threshold: 50
+      sliding-window-size: 10
+      wait-duration-in-open-state: 30s
+      permitted-number-of-calls-in-half-open-state: 3
   parser:
     max-parallel-requests: 3
     matches-per-league: 2

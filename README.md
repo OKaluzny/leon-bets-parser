@@ -11,6 +11,8 @@
 - Асинхронна обробка з обмеженням паралельних запитів
 - Rate limiting для запобігання блокуванню
 - Retry з exponential backoff при помилках API
+- Circuit Breaker для захисту від каскадних збоїв
+- Валідація конфігурації при старті
 
 ## Вимоги
 
@@ -29,6 +31,15 @@ leon:
     retry:
       max-attempts: 3
       delay: 1s
+    http:
+      user-agent: "Mozilla/5.0 ..."
+      max-in-memory-size-mb: 16
+    circuit-breaker:
+      enabled: true
+      failure-rate-threshold: 50      # % помилок для відкриття
+      sliding-window-size: 10         # розмір вікна
+      wait-duration-in-open-state: 30s
+      permitted-number-of-calls-in-half-open-state: 3
   parser:
     max-parallel-requests: 3    # Максимум паралельних запитів
     matches-per-league: 2       # Матчів на лігу
@@ -50,6 +61,14 @@ leon:
 ```bash
 ./gradlew test
 ```
+
+## Аналіз коду
+
+```bash
+./gradlew analyze
+```
+
+Запускає Checkstyle, PMD та SpotBugs.
 
 ## Формат виводу
 
@@ -80,7 +99,7 @@ Ice Hockey, USA NHL
 src/main/java/com/example/demo/
 ├── LeonBetsParserApplication.java  # Точка входу
 ├── config/
-│   ├── LeonApiProperties.java      # Конфігурація
+│   ├── LeonApiProperties.java      # Конфігурація з валідацією
 │   └── WebClientConfig.java        # HTTP клієнт
 ├── model/
 │   ├── Sport.java                  # Спорт
@@ -91,7 +110,7 @@ src/main/java/com/example/demo/
 │   ├── Market.java                 # Ринок ставок
 │   └── Runner.java                 # Результат
 └── service/
-    ├── LeonApiService.java         # API клієнт
+    ├── LeonApiService.java         # API клієнт з Circuit Breaker
     └── LeonBetsParser.java         # Основна логіка
 ```
 
@@ -100,5 +119,13 @@ src/main/java/com/example/demo/
 - Spring Boot 4.0.2
 - Spring WebFlux (реактивний стек)
 - Project Reactor
+- Resilience4j (Circuit Breaker)
+- Jakarta Validation
 - Java Records
 - Jackson JSON
+
+## Якість коду
+
+- Checkstyle 10.21.1
+- PMD 7.9.0
+- SpotBugs 6.0.27 + FindSecBugs
