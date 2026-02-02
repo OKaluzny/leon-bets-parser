@@ -1,12 +1,20 @@
 package com.example.demo.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class EventsResponse {
-    private List<Event> events;
+public record EventsResponse(
+        List<Event> events
+) {
+    public EventsResponse {
+        if (events == null) {
+            events = List.of();
+        }
+    }
 
-    public List<Event> getEvents() { return events; }
-    public void setEvents(List<Event> events) { this.events = events; }
+    public EventsResponse() {
+        this(List.of());
+    }
 }
