@@ -1,0 +1,56 @@
+<?xml version="1.0"?>
+<ruleset name="Custom Rules"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+
+    <description>Custom PMD ruleset for Leon Bets Parser</description>
+
+    <!-- Best Practices -->
+    <rule ref="category/java/bestpractices.xml">
+        <exclude name="GuardLogStatement"/>
+        <exclude name="JUnitTestContainsTooManyAsserts"/>
+        <exclude name="JUnitAssertionsShouldIncludeMessage"/>
+    </rule>
+
+    <!-- Code Style -->
+    <rule ref="category/java/codestyle.xml">
+        <exclude name="AtLeastOneConstructor"/>
+        <exclude name="CommentDefaultAccessModifier"/>
+        <exclude name="ConfusingTernary"/>
+        <exclude name="LocalVariableCouldBeFinal"/>
+        <exclude name="LongVariable"/>
+        <exclude name="MethodArgumentCouldBeFinal"/>
+        <exclude name="OnlyOneReturn"/>
+        <exclude name="ShortClassName"/>
+        <exclude name="ShortMethodName"/>
+        <exclude name="ShortVariable"/>
+        <exclude name="TooManyStaticImports"/>
+    </rule>
+
+    <!-- Design -->
+    <rule ref="category/java/design.xml">
+        <exclude name="AvoidCatchingGenericException"/>
+        <exclude name="LawOfDemeter"/>
+        <exclude name="LoosePackageCoupling"/>
+        <exclude name="TooManyMethods"/>
+        <exclude name="ExcessiveImports"/>
+        <exclude name="UseUtilityClass"/>
+    </rule>
+
+    <!-- Error Prone -->
+    <rule ref="category/java/errorprone.xml">
+        <exclude name="BeanMembersShouldSerialize"/>
+        <exclude name="DataflowAnomalyAnalysis"/>
+        <exclude name="MissingSerialVersionUID"/>
+    </rule>
+
+    <!-- Multithreading -->
+    <rule ref="category/java/multithreading.xml"/>
+
+    <!-- Performance -->
+    <rule ref="category/java/performance.xml"/>
+
+    <!-- Security -->
+    <rule ref="category/java/security.xml"/>
+</ruleset>
