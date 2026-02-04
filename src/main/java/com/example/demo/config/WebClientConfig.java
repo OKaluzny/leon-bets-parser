@@ -7,7 +7,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
-import reactor.netty.resources.ConnectionProvider;
 import reactor.netty.resources.LoopResources;
 
 @Configuration
@@ -23,7 +22,7 @@ public class WebClientConfig {
         LoopResources loopResources = LoopResources.create(
                 "parser", properties.parser().maxParallelRequests(), true);
 
-        HttpClient httpClient = HttpClient.create(ConnectionProvider.newConnection())
+        HttpClient httpClient = HttpClient.create()
                 .runOn(loopResources)
                 .responseTimeout(apiConfig.timeout())
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS,

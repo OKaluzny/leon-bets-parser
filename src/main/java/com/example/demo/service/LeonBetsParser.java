@@ -99,15 +99,14 @@ public class LeonBetsParser {
     }
 
     private Mono<Void> processLeague(LeagueContext ctx) {
-        LOG.debug("Processing league: {} - {}", ctx.region().name(), ctx.league().name());
-
         return apiService.getEventsByLeague(ctx.league().id())
                 .flatMapMany(response -> {
                     if (response.events() == null || response.events().isEmpty()) {
                         LOG.debug("No events found for league: {}", ctx.league().name());
                         return Flux.empty();
                     }
-                    LOG.debug("Found {} events in league {}", response.events().size(), ctx.league().name());
+                    LOG.info("Processing league: {} - {} ({} events)",
+                            ctx.region().name(), ctx.league().name(), response.events().size());
                     return Flux.fromIterable(response.events()).take(matchesPerLeague);
                 })
                 .concatMap(event -> processEvent(event, ctx))
