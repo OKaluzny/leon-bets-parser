@@ -44,7 +44,11 @@ public class WebClientConfig {
             }
         };
 
-        HttpClient httpClient = HttpClient.create(ConnectionProvider.newConnection())
+        ConnectionProvider connectionProvider = ConnectionProvider.builder("parser")
+                .maxConnections(threads)
+                .build();
+
+        HttpClient httpClient = HttpClient.create(connectionProvider)
                 .runOn(loopResources, false)
                 .responseTimeout(apiConfig.timeout())
                 .option(ChannelOption.CONNECT_TIMEOUT_MILLIS,

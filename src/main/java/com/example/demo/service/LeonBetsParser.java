@@ -115,10 +115,7 @@ public class LeonBetsParser {
 
     private Mono<Void> processEvent(Event event, LeagueContext ctx) {
         return apiService.getEventDetails(event.id())
-                .doOnNext(fullEvent -> {
-                    LOG.info("Event: {} | {}", fullEvent.name(), Thread.currentThread().getName());
-                    printEvent(fullEvent, ctx);
-                })
+                .doOnNext(fullEvent -> printEvent(fullEvent, ctx))
                 .then();
     }
 
