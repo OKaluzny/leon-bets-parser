@@ -13,10 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-
 import java.io.PrintStream;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -34,7 +31,6 @@ public class LeonBetsParser {
     private static final DateTimeFormatter DATE_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss 'UTC'").withZone(ZoneOffset.UTC);
 
-    private static final Duration RATE_LIMIT_DELAY = Duration.ofMillis(100);
     private static final int STRING_BUILDER_INITIAL_CAPACITY = 512;
 
     private final LeonApiService apiService;
@@ -64,7 +60,7 @@ public class LeonBetsParser {
                 .flatMapMany(Flux::fromIterable)
                 .filter(sport -> targetSports.contains(sport.family()))
                 .doOnNext(sport -> LOG.debug("Processing sport: {}", sport.name()))
-                .flatMap(this::processTopLeagues, maxParallelRequests)
+                .concatMap(this::processTopLeagues)
                 .then()
                 .doOnSuccess(v -> LOG.info("Parsing completed successfully"))
                 .doOnError(e -> LOG.error("Parsing failed", e));
@@ -80,7 +76,6 @@ public class LeonBetsParser {
         LOG.info("Found {} top leagues for {}", topLeagues.size(), sport.name());
 
         return Flux.fromIterable(topLeagues)
-                .delayElements(RATE_LIMIT_DELAY)
                 .flatMap(this::processLeague, maxParallelRequests);
     }
 
@@ -115,14 +110,12 @@ public class LeonBetsParser {
                     LOG.debug("Found {} events in league {}", response.events().size(), ctx.league().name());
                     return Flux.fromIterable(response.events()).take(matchesPerLeague);
                 })
-                .delayElements(RATE_LIMIT_DELAY)
-                .flatMap(event -> processEvent(event, ctx), maxParallelRequests)
+                .concatMap(event -> processEvent(event, ctx))
                 .then();
     }
 
     private Mono<Void> processEvent(Event event, LeagueContext ctx) {
         return apiService.getEventDetails(event.id())
-                .publishOn(Schedulers.single())
                 .doOnNext(fullEvent -> printEvent(fullEvent, ctx))
                 .then();
     }
